@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Memberly</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+body {
+    margin: 0;
+    font-family: "Poppins", sans-serif;
+    background: #0b1220;
+    color: white;
+}
+
+/* LOADING */
+#loader {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background: #0b1220;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+/* STARS */
+.star {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: white;
+    border-radius: 50%;
+    animation: float 3s infinite ease-in-out;
+}
+
+@keyframes float {
+    0% { transform: translateY(0); opacity: 0.2; }
+    50% { opacity: 1; }
+    100% { transform: translateY(-50px); opacity: 0; }
+}
+
+/* LOGIN BOX */
+#authBox {
+    display: none;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background: #0b1220;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+input {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 6px;
+    border: none;
+    width: 200px;
+}
+
+button {
+    padding: 10px 15px;
+    border: none;
+    background: #4f7cff;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #2f5fff;
+}
+
+/* TOP BAR */
+#topbar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: #111a2e;
+    padding: 15px;
+    display: none;
+    justify-content: space-between;
+}
+
+/* CENTER USERNAME */
+#centerUser {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 28px;
+    text-align: center;
+}
+
+/* PAGES */
+.page {
+    display: none;
+    padding: 120px 20px;
+}
+
+.active {
+    display: block;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+    <div id="stars"></div>
+    <h2>loading memberly...</h2>
+</div>
+
+<!-- LOGIN / SIGNUP -->
+<div id="authBox">
+    <h2>Login / Sign Up</h2>
+    <input id="user" placeholder="username">
+    <input id="pass" type="password" placeholder="password">
+
+    <button onclick="signup()">Sign Up</button>
+    <button onclick="login()">Login</button>
+</div>
+
+<!-- TOP BAR -->
+<div id="topbar">
+    <div> Coins: <span id="coins">0</span></div>
+    <button onclick="logout()">Logout</button>
+</div>
+
+<!-- CENTER USER -->
+<div id="centerUser"></div>
+
+<!-- HOME -->
+<div id="home" class="page">
+    <h2>Home</h2>
+
+    <button onclick="claimDaily()">Claim +10 Coins</button>
+    <p id="cooldown"></p>
+</div>
+
+<script>
+
+/* =======================
+   STARS
+======================= */
+function createStars() {
+    const c = document.getElementById("stars");
+    for (let i = 0; i < 40; i++) {
+        let s = document.createElement("div");
+        s.className = "star";
+        s.style.left = Math.random() * 100 + "%";
+        s.style.top = Math.random() * 100 + "%";
+        s.style.animationDuration = (2 + Math.random() * 3) + "s";
+        c.appendChild(s);
+    }
+}
+createStars();
+
+/* =======================
+   DATA SYSTEM
+======================= */
+let currentUser = localStorage.getItem("currentUser");
+
+function getUserData(user) {
+    return JSON.parse(localStorage.getItem("user_" + user)) || {
+        coins: 0,
+        lastClaim: 0
+    };
+}
+
+function saveUserData(user, data) {
+    localStorage.setItem("user_" + user, JSON.stringify(data));
+}
+
+/* =======================
+   AUTH
+======================= */
+function signup() {
+    let u = user.value;
+    let p = pass.value;
+
+    if (!u || !p) return alert("Fill fields");
+
+    if (localStorage.getItem("user_" + u)) {
+        return alert("Already exists");
+    }
+
+    saveUserData(u, { coins: 0, lastClaim: 0, pass: p });
+    alert("Created")
+}
+
+function login() {
+    let u = user.value;
+    let p = pass.value;
+
+    let data = getUserData(u);
+
+    if (!data.pass || data.pass !== p) {
+        return alert("Wrong login");
+    }
+
+    localStorage.setItem("currentUser", u);
+    currentUser = u;
+
+    startApp();
+}
+
+function logout() {
+    localStorage.removeItem("currentUser");
+    location.reload();
+}
+
+/* =======================
+   START APP
+======================= */
+function startApp() {
+    document.getElementById("authBox").style.display = "none";
+    document.getElementById("topbar").style.display = "flex";
+
+    let data = getUserData(currentUser);
+
+    coins = data.coins;
+    updateCoins();
+
+    document.getElementById("centerUser").innerText =
+        "Welcome, " + currentUser;
+
+    document.getElementById("home").classList.add("active");
+    
+}
+
+/* =======================
+   COINS
+======================= */
+let coins = 0;
+
+function updateCoins() {
+    document.getElementById("coins").innerText = coins;
+
+    let data = getUserData(currentUser);
+    data.coins = coins;
+    saveUserData(currentUser, data);
+}
+
+/* =======================
+   DAILY CLAIM
+======================= */
+function claimDaily() {
+    let data = getUserData(currentUser);
+    let now = Date.now();
+
+    if (now - data.lastClaim < 86400000) {
+        document.getElementById("cooldown").innerText =
+            "Already claimed today.";
+        return;
+    }
+
+    coins += 10;
+    data.lastClaim = now;
+
+    saveUserData(currentUser, data);
+    updateCoins();
+
+    document.getElementById("cooldown").innerText =
+        "+10 coins claimed!";
+}
+
+/* =======================
+   LOADING FLOW
+======================= */
+setTimeout(() => {
+    document.getElementById("loader").style.display = "none";
+
+    if (currentUser) {
+        startApp();
+    } else {
+        document.getElementById("authBox").style.display = "flex";
+    }
+}, 2500);
+
+</script>
+
+</body>
+</html>
